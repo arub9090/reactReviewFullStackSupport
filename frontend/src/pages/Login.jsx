@@ -11,7 +11,7 @@ function Login() {
     password: "",
   });
 
-  const {  email, password } = formData;
+  const { email, password } = formData;
 
   const onChange = (e) => {
     setFormData((prevState) => ({
@@ -35,7 +35,6 @@ function Login() {
 
       <section className="form">
         <form onSubmit={onSubmit}>
-          
           <div className="form-group">
             <input
               type="email"
