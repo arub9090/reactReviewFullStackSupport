@@ -1,24 +1,83 @@
+const asyncHandler = require("express-async-handler");
+const bcrypt = require("bcryptjs");
+const jwt = require('jsonwebtoken');
+const User = require("../models/userModel");
+
 /**
  * user register
  * This is a public route
  */
-const registerUser = (req, res) => {
+const registerUser = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
 
   if (!name || !email || !password) {
-    res
-      .status(400)
-      .json({ message: "PLease alll information to all of the fields" });
-  }else{
-      console.log(req.body);
-    res.send("You got the register route");
+    res.status(400);
+    throw new Error("Please include all fields");
   }
-  
-};
 
-const loginUser = (req, res) => {
-  res.send("Got into Login root");
-};
+  const userExists = await User.findOne({ email });
+
+  if (userExists) {
+    res.status(400);
+    throw new Error("User Already Exists");
+  }
+
+  // hashing the password
+
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
+
+  // create the user to put into mongodb
+
+  const user = await User.create({
+    name,
+    email,
+    password: hashedPassword,
+  });
+
+  // verify if the user has been created
+  if (user) {
+    res.status(201).json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      token: generateToken(user._id),
+    });
+  } else {
+    res.status(400);
+    throw new Error("Invalid user data");
+  }
+});
+
+
+/**
+ * login the user 
+ * get the email pass from req.body
+ * compare it using bcrypt 
+ */
+
+const loginUser = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+
+  const user = await User.findOne({ email });
+
+  if (user && (await bcrypt.compare(password, user.password))) {
+    res.status(200).json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      token: generateToken(user._id),
+    });
+  } else {
+    res.status(401);
+    throw new Error("Invalid credentials");
+  }
+});
+
+const generateToken=(id)=>{
+    return jwt.sign({id}, process.env.JWT_SECRET, {expiresIn: '30d'})
+}
+
 module.exports = {
   registerUser,
   loginUser,
